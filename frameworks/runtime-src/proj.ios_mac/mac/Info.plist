@@ -9,7 +9,7 @@
 	<key>CFBundleIconFile</key>
 	<string>Icon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.chizhovdee.Match3</string>
+	<string>org.cocos2dx.jssample</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>

@@ -1,5 +1,5 @@
 //
-// Prefix header for all source files of the 'Match3' target in the 'Match3' project
+// Prefix header for all source files of the 'jssample' target in the 'jssample' project
 //
 
 #ifdef __OBJC__

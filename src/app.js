@@ -10,6 +10,7 @@ var startColor;
 var visitedTiles = [];
 
 var touchListener;
+var mouseListener;
 
 var tolerance = 400;
 
@@ -34,6 +35,7 @@ var game = cc.Layer.extend({
 
     this.createLevel1();
 
+    //cc.eventManager.addListener(mouseListener, this);
     cc.eventManager.addListener(touchListener, this);
   },
 
@@ -74,11 +76,37 @@ var GameScene = cc.Scene.extend({
   }
 });
 
-touchListener = cc.EventListener.create({
-  event: cc.EventListener.MOUSE,
-  onMouseDown: function(event){
-    var pickedRow = Math.floor(event._y / tileSize);
-    var pickedCol = Math.floor(event._x / tileSize);
+function fallTile(row, col, height){
+    var randomTile = Math.floor(Math.random()*tileTypes.length);
+    var spriteFrame = cc.spriteFrameCache.getSpriteFrame(tileTypes[randomTile]);
+
+    var sprite = new cc.Sprite(spriteFrame);
+    sprite.val = randomTile;
+    sprite.picked = false;
+    globezLayer.addChild(sprite, 0);
+
+    sprite.setPosition(col*tileSize+tileSize/2,(fieldSize+height)*tileSize);
+    var moveAction = cc.moveTo(0.5, cc.p(col*tileSize+tileSize/2,row*tileSize+tileSize/2));
+    sprite.runAction(moveAction);
+    tileArray[row][col] = sprite;
+}
+
+function drawPath(){
+    arrowsLayer.clear();
+    if(visitedTiles.length>0){
+      for(var i=1; i<visitedTiles.length; i++) {
+          arrowsLayer.drawSegment(
+            cc.p(visitedTiles[i-1].col*tileSize+tileSize/2,visitedTiles[i-1].row*tileSize+tileSize/2),
+            cc.p(visitedTiles[i].col*tileSize+tileSize/2,visitedTiles[i].row*tileSize+tileSize/2), 4,
+            cc.color(255, 255, 255, 255)
+        );
+      }
+    }
+}
+
+function startSelecting(event) {
+    var pickedRow = Math.floor(event.y / tileSize);
+    var pickedCol = Math.floor(event.x / tileSize);
 
     tileArray[pickedRow][pickedCol].setOpacity(128);
     tileArray[pickedRow][pickedCol].picked = true;
@@ -86,8 +114,11 @@ touchListener = cc.EventListener.create({
     startColor = tileArray[pickedRow][pickedCol].val;
 
     visitedTiles.push({row: pickedRow, col: pickedCol});
-  },
-  onMouseUp: function(event){
+    
+    return true;
+}
+
+function endSelecting(event){
     arrowsLayer.clear();
 
     startColor = null;
@@ -102,7 +133,6 @@ touchListener = cc.EventListener.create({
         globezLayer.removeChild(tileArray[tile.row][tile.col]);
         tileArray[tile.row][tile.col] = null;
       }
-
     }
 
     if(visitedTiles.length >= 3){
@@ -118,7 +148,7 @@ touchListener = cc.EventListener.create({
             }
 
             if(holesBelow > 0){
-              var moveAction = cc.moveTo(0.5, new cc.Point(tileArray[i][j].x,tileArray[i][j].y - holesBelow * tileSize));
+              var moveAction = cc.moveTo(0.5, cc.p(tileArray[i][j].x,tileArray[i][j].y - holesBelow * tileSize));
               tileArray[i][j].runAction(moveAction);
               tileArray[i - holesBelow][j] = tileArray[i][j];
               tileArray[i][j] = null;
@@ -139,25 +169,27 @@ touchListener = cc.EventListener.create({
 
         if(missingGlobes > 0){
           for(j = 0; j < missingGlobes; j++){
-            this.fallTile(fieldSize - j - 1, i, missingGlobes - j);
+            fallTile(fieldSize - j - 1, i, missingGlobes - j);
           }
         }
       }
     }
 
     visitedTiles = [];
-  },
+    
+    return true;
+}
 
-  onMouseMove: function(event){
+function selecting(event){
     if(startColor != null){
-      var currentRow = Math.floor(event._y / tileSize);
-      var currentCol = Math.floor(event._x / tileSize);
+      var currentRow = Math.floor(event.y / tileSize);
+      var currentCol = Math.floor(event.x / tileSize);
 
       var centerX = currentCol * tileSize + tileSize / 2;
       var centerY = currentRow * tileSize + tileSize / 2;
 
-      var distX = event._x - centerX;
-      var distY = event._y - centerY;
+      var distX = event.x - centerX;
+      var distY = event.y - centerY;
 
       if(distX * distX + distY * distY < tolerance){
 
@@ -185,37 +217,35 @@ touchListener = cc.EventListener.create({
           }
         }
 
-        this.drawPath();
+        drawPath();
       }
     }
-  },
+    
+    return true;
+}
 
-  fallTile: function(row, col, height){
-    var randomTile = Math.floor(Math.random()*tileTypes.length);
-    var spriteFrame = cc.spriteFrameCache.getSpriteFrame(tileTypes[randomTile]);
-
-    var sprite = new cc.Sprite(spriteFrame);
-    sprite.val = randomTile;
-    sprite.picked = false;
-    globezLayer.addChild(sprite, 0);
-
-    sprite.setPosition(col*tileSize+tileSize/2,(fieldSize+height)*tileSize);
-    var moveAction = cc.moveTo(0.5, new cc.Point(col*tileSize+tileSize/2,row*tileSize+tileSize/2));
-    sprite.runAction(moveAction);
-    tileArray[row][col] = sprite;
-  },
-
-  drawPath: function(){
-    arrowsLayer.clear();
-    if(visitedTiles.length>0){
-      for(var i=1;i<visitedTiles.length;i++){
-        arrowsLayer.drawSegment(
-          new cc.Point(visitedTiles[i-1].col*tileSize+tileSize/2,visitedTiles[i-1].row*tileSize+tileSize/2),
-          new cc.Point(visitedTiles[i].col*tileSize+tileSize/2,visitedTiles[i].row*tileSize+tileSize/2), 4,
-          cc.color(255, 255, 255, 255)
-        );
-      }
-    }
-  }
+mouseListener = cc.EventListener.create({
+  event: cc.EventListener.MOUSE,
+  onMouseDown: startSelecting,
+  onMouseUp: endSelecting,
+  onMouseMove: selecting
 });
 
+touchListener = cc.EventListener.create({
+        event: cc.EventListener.TOUCH_ONE_BY_ONE,
+        onTouchBegan: function (touch, event) {
+            cc.log("###INFO>>> onTouchBegan");
+            cc.log(touch.getLocation());
+            return startSelecting(touch.getLocation());
+        },
+       onTouchMoved: function (touch, event) {
+            cc.log("###INFO>>> onTouchMoved");
+            cc.log(touch.getLocation());
+            return selecting(touch.getLocation());
+       },
+       onTouchEnded: function (touch, event) {
+            cc.log("###INFO>>> onTouchEnded");
+            cc.log(touch.getLocation());
+            return endSelecting(touch.getLocation());
+       }
+    });
